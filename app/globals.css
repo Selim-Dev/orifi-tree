@@ -114,10 +114,7 @@ button {
   opacity: 0.85;
 }
 
-.no-wind .sway {
-  animation: none;
-}
-
+/* Wind is always on; this is the only thing that stops it. */
 @media (prefers-reduced-motion: reduce) {
   .sway {
     animation: none;
@@ -128,7 +125,6 @@ button {
 
 .leaf-name,
 .leaf-years,
-.leaf-latin,
 .founder-name,
 .founder-years,
 .founder-title {
@@ -146,13 +142,6 @@ button {
   fill: #ffffff;
   stroke: rgba(18, 42, 16, 0.5);
   stroke-width: 3.2px;
-}
-
-.leaf-latin {
-  font-size: 13px;
-  font-weight: 600;
-  fill: rgba(255, 255, 255, 0.92);
-  letter-spacing: 0.02em;
 }
 
 .leaf-years {

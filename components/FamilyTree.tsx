@@ -262,7 +262,6 @@ export function FamilyTree() {
 
       <DetailPanel
         node={selected}
-        arabicDigits={arabicDigits}
         onClose={() => setSelectedId(null)}
         onReveal={reveal}
         onToggle={toggle}

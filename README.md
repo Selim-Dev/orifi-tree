@@ -187,15 +187,17 @@ clear.
 - 4 generations, 31 people, static data in [`lib/family.ts`](lib/family.ts)
 - **Collapsible branches** — opens at 3 generations, buds show hidden descendant
   counts, per-branch fold/unfold, generation selector
-- Full RTL Arabic, Arabic-Indic numerals (toggleable), optional Latin transliteration
+- Full RTL Arabic throughout, Arabic-Indic numerals everywhere. Latin
+  transliteration is shown in the detail panel only, never on the leaves
 - Click any leaf → detail panel with lineage, wife, children, total descendants;
   click through to father or children and the view reveals and flies to them,
   unfolding whatever is in the way
 - Search runs over the whole family (folded people included) and dims non-matches
-- Wheel zoom / drag pan / fit-to-screen (hand-rolled, ~50 lines — no `d3-zoom`)
+- Wheel zoom / drag pan / fit-to-screen (hand-rolled, ~80 lines — no `d3-zoom`)
 - Deceased relatives render as **autumn leaves** rather than greyed-out boxes —
   same visual language, read as a season rather than a status flag
-- Wind animation, respects `prefers-reduced-motion`
+- Wind animation, always on; the only thing that stops it is
+  `prefers-reduced-motion`
 
 ### Data shape
 
