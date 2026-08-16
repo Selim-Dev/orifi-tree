@@ -1,0 +1,709 @@
+:root {
+  --ink: #23301c;
+  --ink-soft: #56684c;
+  --bark: #5b3d21;
+  --gold: #b9902f;
+  --green: #3f8b43;
+  --panel: rgba(255, 253, 246, 0.94);
+  --line: rgba(90, 110, 78, 0.22);
+  --font-ar: "Noto Kufi Arabic", "Tajawal", "Segoe UI", Tahoma, "Arial", sans-serif;
+  --font-serif: "Amiri", "Traditional Arabic", Georgia, serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-ar);
+  color: var(--ink);
+  background: #eef4e4;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------- stage */
+
+.stage {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+}
+
+.canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+  touch-action: none;
+  /* Without this, dragging to pan selects the SVG name text and paints blue
+     highlight boxes over the leaves. */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.canvas.dragging {
+  cursor: grabbing;
+}
+
+.node {
+  cursor: pointer;
+}
+
+.node:focus {
+  outline: none;
+}
+
+/* ------------------------------------------------------- wind motion */
+
+/* The whole point of grouping foliage per twig: one cheap transform sways
+   ~14 leaves together, so the canopy moves like a branch and not like
+   confetti. transform-box: fill-box anchors the rotation to the shape. */
+@keyframes sway {
+  0%,
+  100% {
+    transform: rotate(-1.1deg) translateY(0);
+  }
+  50% {
+    transform: rotate(1.4deg) translateY(-3px);
+  }
+}
+
+.sway {
+  transform-box: fill-box;
+  transform-origin: 50% 90%;
+  animation: sway 6.5s ease-in-out infinite;
+  will-change: transform;
+}
+
+.sway-slow {
+  animation-duration: 11s;
+}
+
+/* Shoots on heavy structural limbs barely move — a thick branch does not
+   flutter like a twig. */
+.sway-heavy {
+  animation-name: sway-heavy;
+  animation-duration: 12s;
+}
+
+@keyframes sway-heavy {
+  0%,
+  100% {
+    transform: rotate(-0.35deg);
+  }
+  50% {
+    transform: rotate(0.45deg);
+  }
+}
+
+.foliage .shoot {
+  fill: none;
+  stroke: #5c3f22;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+
+.no-wind .sway {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sway {
+    animation: none;
+  }
+}
+
+/* --------------------------------------------------------- svg text */
+
+.leaf-name,
+.leaf-years,
+.leaf-latin,
+.founder-name,
+.founder-years,
+.founder-title {
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+  paint-order: stroke fill;
+}
+
+/* Sized as large as the leaf allows: at fit-to-screen the whole canopy is
+   scaled to ~0.45, so anything under ~24px here is unreadable on open. */
+.leaf-name {
+  font-size: 27px;
+  font-weight: 700;
+  fill: #ffffff;
+  stroke: rgba(18, 42, 16, 0.5);
+  stroke-width: 3.2px;
+}
+
+.leaf-latin {
+  font-size: 13px;
+  font-weight: 600;
+  fill: rgba(255, 255, 255, 0.92);
+  letter-spacing: 0.02em;
+}
+
+.leaf-years {
+  font-size: 15px;
+  font-weight: 600;
+  fill: rgba(255, 255, 255, 0.88);
+}
+
+.founder-name {
+  font-family: var(--font-serif);
+  font-size: 32px;
+  font-weight: 700;
+  fill: #3a2807;
+}
+
+.founder-years {
+  font-size: 16px;
+  font-weight: 600;
+  fill: rgba(58, 40, 7, 0.75);
+}
+
+.founder-title {
+  font-size: 19px;
+  font-weight: 700;
+  fill: #6b4f16;
+}
+
+/* ------------------------------------------------- fold / unfold control */
+
+.toggle {
+  cursor: pointer;
+}
+
+/* An explicit, always-present hit target. `pointer-events: all` makes a
+   fully transparent shape hittable, which `fill: none` would not be. */
+.toggle .hit {
+  fill: transparent;
+  pointer-events: all;
+}
+
+.toggle .dot {
+  stroke: #ffffff;
+  stroke-width: 2.5;
+  transition: opacity 0.12s ease;
+}
+
+.toggle.collapsed .dot {
+  fill: #2f7440;
+  filter: drop-shadow(0 3px 5px rgba(20, 45, 18, 0.45));
+}
+
+.toggle.collapsed:hover .dot {
+  fill: #3f9152;
+}
+
+/* Kept permanently visible but muted. Hover-only controls are undiscoverable
+   here: moving toward one crosses a gap where the parent is no longer
+   hovered, so the control vanishes as you reach for it. */
+.toggle.expanded .dot {
+  fill: rgba(45, 70, 40, 0.55);
+  opacity: 0.4;
+}
+
+.node:hover .toggle.expanded .dot,
+.toggle.expanded:hover .dot,
+.toggle.expanded:focus .dot {
+  opacity: 1;
+}
+
+.toggle-count {
+  font-size: 21px;
+  font-weight: 700;
+  fill: #ffffff;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+.toggle-glyph {
+  stroke: #ffffff;
+  stroke-width: 3;
+  stroke-linecap: round;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.node:hover .toggle-glyph,
+.toggle.expanded:hover .toggle-glyph {
+  opacity: 1;
+}
+
+.grain path {
+  fill: none;
+  stroke: rgba(28, 17, 8, 0.28);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.guide path {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 2.5;
+  stroke-dasharray: 4 16;
+}
+
+.grass path {
+  fill: none;
+  stroke: #5f8a48;
+  stroke-width: 3;
+  stroke-linecap: round;
+  opacity: 0.75;
+}
+
+.guide text {
+  font-size: 26px;
+  font-weight: 700;
+  fill: rgba(70, 90, 60, 0.55);
+  text-anchor: start;
+  dominant-baseline: middle;
+}
+
+/* ------------------------------------------------------------ topbar */
+
+.topbar {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px 24px;
+  background: linear-gradient(to bottom, rgba(247, 250, 240, 0.95), rgba(247, 250, 240, 0));
+  pointer-events: none;
+}
+
+.topbar > * {
+  pointer-events: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f6dfa2, #b9902f 60%, #7d5a1d);
+  box-shadow: 0 2px 8px rgba(60, 45, 10, 0.3);
+}
+
+.brand h1 {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.brand p {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.search input {
+  width: 240px;
+  padding: 9px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  outline: none;
+}
+
+.search input:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(63, 139, 67, 0.15);
+}
+
+.count {
+  font-size: 12px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------- controls */
+
+.controls {
+  position: absolute;
+  inset-block-end: 22px;
+  inset-inline-start: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.levels {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 2px 10px rgba(40, 60, 30, 0.1);
+}
+
+.levels-label {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-inline-end: 4px;
+}
+
+.lvl {
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.lvl.wide {
+  font-size: 12.5px;
+}
+
+.lvl:hover {
+  background: rgba(63, 139, 67, 0.1);
+}
+
+.lvl.on {
+  background: var(--green);
+  color: #fff;
+}
+
+.zoomgroup {
+  display: flex;
+  gap: 6px;
+}
+
+.zoomgroup button {
+  min-width: 38px;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+  box-shadow: 0 2px 10px rgba(40, 60, 30, 0.1);
+}
+
+.zoomgroup button.fit {
+  font-size: 13px;
+}
+
+.zoomgroup button:hover {
+  background: #fff;
+  border-color: var(--green);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 340px;
+}
+
+.chip {
+  padding: 6px 13px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  transition: all 0.15s;
+}
+
+.chip.on {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------ legend */
+
+.legend {
+  position: absolute;
+  inset-block-end: 22px;
+  inset-inline-end: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  box-shadow: 0 2px 12px rgba(40, 60, 30, 0.1);
+}
+
+.legend span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend .sw {
+  width: 15px;
+  height: 15px;
+  border-radius: 50% 8px;
+  flex: none;
+}
+
+.sw.living {
+  background: linear-gradient(140deg, #8fce74, #357a3c);
+}
+.sw.passed {
+  background: linear-gradient(140deg, #e3b866, #8d5f24);
+}
+.sw.founder {
+  background: radial-gradient(circle at 35% 30%, #f6dfa2, #96702a);
+  border-radius: 50%;
+}
+.sw.bud {
+  background: #2f7440;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(20, 45, 18, 0.4);
+}
+
+.legend .hint {
+  margin-top: 3px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+  font-size: 11.5px;
+  opacity: 0.8;
+}
+
+/* ------------------------------------------------------------- panel */
+
+.panel {
+  position: absolute;
+  inset-block-start: 84px;
+  inset-inline-end: 22px;
+  width: 320px;
+  max-height: calc(100vh - 190px);
+  overflow-y: auto;
+  padding: 20px 22px 22px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--panel);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 12px 40px rgba(35, 55, 25, 0.18);
+  animation: pop 0.18s ease-out;
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+/* Sits on the inline-end corner so it never lands on the status badge,
+   which is inline-start aligned. */
+.panel .close {
+  position: absolute;
+  inset-block-start: 12px;
+  inset-inline-end: 14px;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(90, 110, 78, 0.1);
+  font-size: 18px;
+  line-height: 1;
+  color: var(--ink-soft);
+}
+
+.panel .close:hover {
+  background: rgba(90, 110, 78, 0.2);
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 11px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.badge.living {
+  background: rgba(63, 139, 67, 0.14);
+  color: #2f7237;
+}
+
+.badge.passed {
+  background: rgba(185, 144, 47, 0.16);
+  color: #8d5f24;
+}
+
+.panel h2 {
+  margin: 10px 0 2px;
+  font-family: var(--font-serif);
+  font-size: 21px;
+  line-height: 1.35;
+}
+
+.panel .latin {
+  margin: 0 0 14px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  direction: ltr;
+  text-align: right;
+}
+
+.panel dl {
+  margin: 0;
+  display: grid;
+  gap: 9px;
+}
+
+.panel dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--line);
+}
+
+.panel dt {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  flex: none;
+}
+
+.panel dd {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.fold-btn {
+  width: 100%;
+  margin-top: 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--green);
+  border-radius: 11px;
+  background: var(--green);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.fold-btn:hover {
+  background: #357a3c;
+}
+
+.kids {
+  margin-top: 16px;
+}
+
+.kids h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.kids ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+}
+
+.link {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 9px;
+  background: rgba(63, 139, 67, 0.07);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  text-align: right;
+}
+
+.link:hover {
+  background: rgba(63, 139, 67, 0.16);
+}
+
+.link span {
+  font-weight: 400;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+}
+
+.panel .note {
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(185, 144, 47, 0.1);
+  font-family: var(--font-serif);
+  font-size: 14px;
+  line-height: 1.7;
+  color: #5f4a1c;
+}
+
+/* --------------------------------------------------------- responsive */
+
+@media (max-width: 900px) {
+  .panel {
+    inset-block-start: auto;
+    inset-block-end: 0;
+    inset-inline: 0;
+    width: auto;
+    max-height: 52vh;
+    border-radius: 18px 18px 0 0;
+  }
+  .legend {
+    display: none;
+  }
+  .search input {
+    width: 150px;
+  }
+  .brand h1 {
+    font-size: 18px;
+  }
+}
